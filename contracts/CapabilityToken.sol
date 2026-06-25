@@ -36,9 +36,12 @@ contract CapabilityToken is ICapabilityToken {
     error AlreadyWired();
     error UnimplementedCapType(CapType t);
 
-    constructor(AgentID _agentID) {
+    /// @param wirer_ the address allowed to perform the one-time `setPublications` wiring. Passed
+    ///        explicitly (not `msg.sender`) so the contract can be deployed via a CREATE2 factory
+    ///        (where `msg.sender` would be the factory) while keeping the deployer in control.
+    constructor(AgentID _agentID, address wirer_) {
         agentID = _agentID;
-        _wirer = msg.sender;
+        _wirer = wirer_;
     }
 
     /// @notice One-time wiring (avoids the CapabilityToken<->Publications constructor cycle).

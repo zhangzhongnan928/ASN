@@ -133,7 +133,7 @@ export async function startChain(): Promise<ChainHarness> {
   };
 
   const agentID = await deploy(A.AgentID, ["ipfs://asn/agent/"]);
-  const capabilityToken = await deploy(A.CapabilityToken, [agentID]);
+  const capabilityToken = await deploy(A.CapabilityToken, [agentID, deployer.address]);
   const publications = await deploy(A.Publications, [agentID, capabilityToken]);
   // wire publications into the capability token
   {

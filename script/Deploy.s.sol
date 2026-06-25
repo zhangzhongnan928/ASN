@@ -31,7 +31,7 @@ contract Deploy is Script {
         vm.startBroadcast(pk);
 
         AgentID agentID = new AgentID("https://asn.example/agent/");
-        CapabilityToken cap = new CapabilityToken(agentID);
+        CapabilityToken cap = new CapabilityToken(agentID, deployer);
         Publications pubs = new Publications(agentID, cap);
         cap.setPublications(address(pubs));
 

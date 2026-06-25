@@ -14,6 +14,9 @@ export const ENTRYPOINT_V06: Address = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d27
 export const ERC6551_REGISTRY: Address = "0x000000006551c19487814612e58FE06813775758";
 export const COINBASE_FACTORY: Address = "0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a";
 export const TBA_SALT = ("0x" + "00".repeat(32)) as `0x${string}`;
+/** Canonical deterministic CREATE2 deployer (Arachnid), present on Base Sepolia. Used so the deploy
+ *  works from any account type (EOA, EIP-7702 EOA, or smart wallet) via a normal CALL. */
+export const CREATE2_DEPLOYER: Address = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
 
 export const abis = {
   AgentID: AgentIDAbi,

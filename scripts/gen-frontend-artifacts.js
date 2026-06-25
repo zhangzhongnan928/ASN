@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // Generate frontend/lib/artifacts.ts (ABIs + creation bytecode) from forge artifacts.
 // Run after `forge build`:  node scripts/gen-frontend-artifacts.js
-const fs = require("fs");
-const path = require("path");
-const root = path.resolve(__dirname, "..");
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const out = (sol, name) => JSON.parse(fs.readFileSync(path.join(root, `out/${sol}/${name}.json`), "utf8"));
 
 const deployable = [

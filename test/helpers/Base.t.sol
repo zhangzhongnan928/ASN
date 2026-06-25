@@ -46,7 +46,7 @@ abstract contract Base is Test {
 
         // Core ASN contracts.
         agentID = new AgentID("ipfs://asn/agent/");
-        cap = new CapabilityToken(agentID);
+        cap = new CapabilityToken(agentID, address(this));
         pubs = new Publications(agentID, cap);
         cap.setPublications(address(pubs));
 
