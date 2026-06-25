@@ -28,7 +28,7 @@ verify() { # addr  path:name  [encoded-constructor-args]
 }
 
 [ -n "$AGENTID" ] && verify "$AGENTID" "contracts/AgentID.sol:AgentID" "$(cast abi-encode 'c(string)' "$BASEURI")"
-[ -n "$CAP" ]     && verify "$CAP" "contracts/CapabilityToken.sol:CapabilityToken" "$(cast abi-encode 'c(address)' "$AGENTID")"
+[ -n "$CAP" ]     && verify "$CAP" "contracts/CapabilityToken.sol:CapabilityToken" "$(cast abi-encode 'c(address,address)' "$AGENTID" "$OWNER")"
 [ -n "$PUBS" ]    && verify "$PUBS" "contracts/Publications.sol:Publications" "$(cast abi-encode 'c(address,address)' "$AGENTID" "$CAP")"
 [ -n "$TBA" ]     && verify "$TBA" "contracts/ASNTokenBoundAccount.sol:ASNTokenBoundAccount"
 [ -n "$TBAKEYS" ] && verify "$TBAKEYS" "contracts/TBAKeyRegistry.sol:TBAKeyRegistry"
