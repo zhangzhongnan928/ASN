@@ -150,7 +150,7 @@ export default function DeployPage() {
   }, [addrs]);
 
   function downloadJson() {
-    const blob = new Blob([JSON.stringify({ chainId: 84532, ...addrs }, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ chainId: 84532, owner: address, ...addrs }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

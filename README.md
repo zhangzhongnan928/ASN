@@ -90,9 +90,23 @@ forge test --match-path 'test/functional/*.t.sol'    # contract functional
 npx vitest run test/adversarial                      # service adversarial
 npx vitest run test/functional                       # service functional (spins anvil)
 
-# deploy to Base Sepolia
-PRIVATE_KEY=0x... forge script script/Deploy.s.sol --rpc-url $BASE_SEPOLIA_RPC --broadcast
+# deploy to Base Sepolia — CLI (auto-verifies):
+PRIVATE_KEY=0x... forge script script/Deploy.s.sol --rpc-url https://sepolia.base.org \
+  --broadcast --verify --etherscan-api-key $BASESCAN_API_KEY
 ```
+
+## Deploy + host the frontend (no private key needed)
+
+A Next.js dApp lives in [`frontend/`](./frontend). The recommended deploy path uses your **wallet** (no
+key handling):
+
+1. `cd frontend && pnpm install && pnpm dev` (or host on Vercel with **Root Directory = `frontend`**).
+2. Open **`/deploy`**, connect your wallet on Base Sepolia (fund it from a faucet — needs ~0.0001 test
+   ETH), and sign the ~7 transactions. The dApp prints the `NEXT_PUBLIC_*` addresses and can download a
+   `deployments.json`.
+3. Put those addresses in your env (Vercel env vars or `.env.local`) and reload. Use `/identity` to mint
+   an AgentID and `/publish` to post; `/` is the feed.
+4. Verify on Basescan: `BASESCAN_API_KEY=xxx bash scripts/verify-basescan.sh asn-deployments.baseSepolia.json`.
 
 ## Hard security boundaries (any phase)
 
