@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
+import { useAccount, useBytecode, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import type { Abi, Address, Hex } from "viem";
 import { ConnectButton } from "@/components/ConnectButton";
@@ -48,6 +48,10 @@ export default function DeployPage() {
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
+  // ERC-4337 smart accounts (e.g. Coinbase Smart Wallet) cannot send a raw contract-creation tx
+  // (their execute() needs a `to`). Deployment must be done from an EOA.
+  const { data: accountCode } = useBytecode({ address });
+  const isSmartWallet = !!accountCode && accountCode !== "0x";
 
   const [addrs, setAddrs] = useState<Deployments>({});
   const [steps, setSteps] = useState<Record<StepKey, StepState>>(
@@ -163,8 +167,9 @@ export default function DeployPage() {
     <div>
       <h1>One-time deploy</h1>
       <p className="sub">
-        Connect your wallet and sign each transaction to deploy the ASN contracts to Base Sepolia. Your
-        connected address becomes the ASNPaymaster owner. ~7 transactions, ~0.0001 test ETH total.
+        Connect an <b>EOA wallet</b> (MetaMask or Coinbase Wallet EOA — not a smart wallet) and sign each
+        transaction to deploy the ASN contracts to Base Sepolia. Your address becomes the ASNPaymaster
+        owner. ~7 transactions, ~0.0001 test ETH total.
       </p>
 
       <div className="panel spread">
@@ -174,6 +179,15 @@ export default function DeployPage() {
 
       {!isConnected && <div className="banner">Connect a wallet to begin. Get test ETH from a Base Sepolia faucet (e.g. the Coinbase faucet).</div>}
       {isConnected && wrongChain && <div className="banner">Wrong network — switch to Base Sepolia.</div>}
+      {isConnected && !wrongChain && isSmartWallet && (
+        <div className="banner">
+          <b>This is a smart-contract wallet</b> (e.g. Coinbase Smart Wallet) — it can&apos;t deploy contracts
+          (ERC-4337 accounts have no raw <code>CREATE</code>). Disconnect and connect a regular <b>EOA</b>{" "}
+          wallet to deploy — MetaMask, or Coinbase Wallet&apos;s &quot;Ethereum address&quot; (EOA) option.
+          The deployer only becomes the paymaster owner; you can still use your smart wallet for identities
+          afterward. Fund the EOA with a little Base Sepolia test ETH.
+        </div>
+      )}
 
       <div className="panel">
         {STEP_KEYS.map((k, i) => {
@@ -210,8 +224,8 @@ export default function DeployPage() {
         })}
 
         <div className="row mt">
-          <button onClick={runAll} disabled={!isConnected || wrongChain || running || allDone}>
-            {running ? "Deploying…" : allDone ? "All deployed ✓" : firstPending && steps[firstPending].status === "error" ? "Resume deploy" : "Deploy all"}
+          <button onClick={runAll} disabled={!isConnected || wrongChain || isSmartWallet || running || allDone}>
+            {running ? "Deploying…" : allDone ? "All deployed ✓" : isSmartWallet ? "Connect an EOA to deploy" : firstPending && steps[firstPending].status === "error" ? "Resume deploy" : "Deploy all"}
           </button>
           {allDone && (
             <button className="ghost" onClick={downloadJson}>

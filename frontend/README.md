@@ -24,7 +24,8 @@ pnpm dev            # http://localhost:3000
 
 1. Import the GitHub repo in Vercel and set **Root Directory = `frontend`**.
 2. Deploy (it builds with no env vars — the app works, pages prompt to deploy/configure).
-3. Open `/deploy`, connect your wallet on Base Sepolia, and run the deployment (≈7 txs, ≈0.0001 test ETH).
+3. Open `/deploy`, connect an **EOA** wallet on Base Sepolia (MetaMask or Coinbase Wallet EOA — a *smart*
+   wallet can't deploy contracts), and run the deployment (≈7 txs, ≈0.0001 test ETH).
 4. Copy the `NEXT_PUBLIC_*` addresses it prints into **Vercel → Project → Settings → Environment
    Variables**, then redeploy. (Until then, the addresses also live in your browser's local storage.)
 5. Optionally set `NEXT_PUBLIC_RPC_URL` to a dedicated Base Sepolia RPC (e.g. Alchemy) for reliable feed

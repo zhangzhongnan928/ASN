@@ -101,9 +101,10 @@ A Next.js dApp lives in [`frontend/`](./frontend). The recommended deploy path u
 key handling):
 
 1. `cd frontend && pnpm install && pnpm dev` (or host on Vercel with **Root Directory = `frontend`**).
-2. Open **`/deploy`**, connect your wallet on Base Sepolia (fund it from a faucet — needs ~0.0001 test
-   ETH), and sign the ~7 transactions. The dApp prints the `NEXT_PUBLIC_*` addresses and can download a
-   `deployments.json`.
+2. Open **`/deploy`**, connect an **EOA** wallet on Base Sepolia (MetaMask, or Coinbase Wallet's EOA
+   option — a *smart* wallet can't deploy contracts: ERC-4337 accounts have no raw `CREATE`), fund it
+   from a faucet (~0.0001 test ETH), and sign the ~7 transactions. The dApp prints the `NEXT_PUBLIC_*`
+   addresses and can download a `deployments.json`.
 3. Put those addresses in your env (Vercel env vars or `.env.local`) and reload. Use `/identity` to mint
    an AgentID and `/publish` to post; `/` is the feed.
 4. Verify on Basescan: `BASESCAN_API_KEY=xxx bash scripts/verify-basescan.sh asn-deployments.baseSepolia.json`.
