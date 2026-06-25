@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { baseSepolia } from "wagmi/chains";
 import { concat, encodeDeployData, getContractAddress, toHex, type Abi, type Address, type Hex } from "viem";
@@ -47,13 +47,25 @@ function randomSalt(): Hex {
   return toHex(b);
 }
 
+const SALT_KEY = "asn.deploy.salt.baseSepolia";
+// Persist the CREATE2 salt so deterministic addresses are stable across reloads — "Resume" then
+// re-derives the same addresses and the idempotency check skips already-deployed contracts.
+function loadOrCreateSalt(): Hex {
+  const s = window.localStorage.getItem(SALT_KEY);
+  if (s && /^0x[0-9a-fA-F]{64}$/.test(s)) return s as Hex;
+  const fresh = randomSalt();
+  window.localStorage.setItem(SALT_KEY, fresh);
+  return fresh;
+}
+
 export default function DeployPage() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
 
-  const [salt] = useState<Hex>(() => randomSalt());
+  const [salt, setSalt] = useState<Hex>();
+  useEffect(() => setSalt(loadOrCreateSalt()), []);
   const [addrs, setAddrs] = useState<Deployments>({});
   const [steps, setSteps] = useState<Record<StepKey, StepState>>(
     () => Object.fromEntries(STEP_KEYS.map((k) => [k, { status: "idle" }])) as Record<StepKey, StepState>,
@@ -66,36 +78,55 @@ export default function DeployPage() {
   const setStep = (k: StepKey, s: Partial<StepState>) => setSteps((prev) => ({ ...prev, [k]: { ...prev[k], ...s } }));
 
   /** Build initcode + deterministic CREATE2 address for a contract. */
-  function plan(abi: Abi, bytecode: Hex, args: unknown[]): { initcode: Hex; address: Address } {
+  function plan(s: Hex, abi: Abi, bytecode: Hex, args: unknown[]): { initcode: Hex; address: Address } {
     const initcode = encodeDeployData({ abi, bytecode, args } as never) as Hex;
-    const address = getContractAddress({ opcode: "CREATE2", from: CREATE2_DEPLOYER, salt, bytecode: initcode });
+    const address = getContractAddress({ opcode: "CREATE2", from: CREATE2_DEPLOYER, salt: s, bytecode: initcode });
     return { initcode, address };
   }
 
   /** All addresses are deterministic from (salt, user); compute them upfront. */
-  function computeAll(user: Address) {
-    const agentID = plan(AgentIDAbi as Abi, AgentIDBytecode as Hex, ["ipfs://asn/agent/"]);
-    const capabilityToken = plan(CapabilityTokenAbi as Abi, CapabilityTokenBytecode as Hex, [agentID.address, user]);
-    const publications = plan(PublicationsAbi as Abi, PublicationsBytecode as Hex, [agentID.address, capabilityToken.address]);
-    const tbaImpl = plan(ASNTokenBoundAccountAbi as Abi, ASNTokenBoundAccountBytecode as Hex, []);
-    const tbaKeyRegistry = plan(TBAKeyRegistryAbi as Abi, TBAKeyRegistryBytecode as Hex, []);
-    const paymaster = plan(ASNPaymasterAbi as Abi, ASNPaymasterBytecode as Hex, [ENTRYPOINT_V06, user]);
+  function computeAll(s: Hex, user: Address) {
+    const agentID = plan(s, AgentIDAbi as Abi, AgentIDBytecode as Hex, ["ipfs://asn/agent/"]);
+    const capabilityToken = plan(s, CapabilityTokenAbi as Abi, CapabilityTokenBytecode as Hex, [agentID.address, user]);
+    const publications = plan(s, PublicationsAbi as Abi, PublicationsBytecode as Hex, [agentID.address, capabilityToken.address]);
+    const tbaImpl = plan(s, ASNTokenBoundAccountAbi as Abi, ASNTokenBoundAccountBytecode as Hex, []);
+    const tbaKeyRegistry = plan(s, TBAKeyRegistryAbi as Abi, TBAKeyRegistryBytecode as Hex, []);
+    const paymaster = plan(s, ASNPaymasterAbi as Abi, ASNPaymasterBytecode as Hex, [ENTRYPOINT_V06, user]);
     return { agentID, capabilityToken, publications, tbaImpl, tbaKeyRegistry, paymaster };
   }
 
-  /** Deploy one contract via the CREATE2 factory (a normal CALL — works for any account type). */
-  async function deployVia(initcode: Hex, expected: Address): Promise<Hex> {
+  /** Poll for deployed code (the public RPC can lag behind a relayed/smart-account tx). */
+  async function waitForCode(addr: Address): Promise<boolean> {
+    for (let i = 0; i < 15; i++) {
+      const code = await publicClient!.getCode({ address: addr });
+      if (code && code !== "0x") return true;
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+    return false;
+  }
+
+  /** Deploy one contract via the CREATE2 factory (a normal CALL — works for any account type:
+   *  EOA, EIP-7702, or smart wallet, since the wallet may wrap it in execute()). Idempotent. */
+  async function deployVia(s: Hex, initcode: Hex, expected: Address): Promise<Hex> {
     if (!walletClient || !publicClient) throw new Error("wallet not ready");
-    const existing = await publicClient.getCode({ address: expected });
-    if (existing && existing !== "0x") return "0x_already" as Hex; // idempotent
-    const hash = await walletClient.sendTransaction({ to: CREATE2_DEPLOYER, data: concat([salt, initcode]) });
+    if (await waitForCodeFast(expected)) return "0x_already" as Hex; // already deployed (resume/idempotent)
+    const hash = await walletClient.sendTransaction({ to: CREATE2_DEPLOYER, data: concat([s, initcode]) });
     await publicClient.waitForTransactionReceipt({ hash });
-    const code = await publicClient.getCode({ address: expected });
-    if (!code || code === "0x") throw new Error("deployment produced no code at the expected address");
+    // The tx is mined; poll until the code shows up (RPC may lag a relayed tx). Address is
+    // deterministic, so once present the deploy is confirmed.
+    if (!(await waitForCode(expected))) {
+      throw new Error("tx mined but code not yet visible at the deterministic address — RPC may be lagging; click Resume.");
+    }
     return hash;
   }
 
-  async function runStep(k: StepKey, acc: Deployments, plans: ReturnType<typeof computeAll>): Promise<Deployments> {
+  /** One quick getCode (for the idempotency check — no polling). */
+  async function waitForCodeFast(addr: Address): Promise<boolean> {
+    const code = await publicClient!.getCode({ address: addr });
+    return !!code && code !== "0x";
+  }
+
+  async function runStep(k: StepKey, acc: Deployments, plans: ReturnType<typeof computeAll>, s: Hex): Promise<Deployments> {
     setStep(k, { status: "pending", error: undefined });
     try {
       if (k === "wire") {
@@ -111,7 +142,7 @@ export default function DeployPage() {
         return acc;
       }
       const p = plans[k as keyof ReturnType<typeof computeAll>];
-      const hash = await deployVia(p.initcode, p.address);
+      const hash = await deployVia(s, p.initcode, p.address);
       setStep(k, { status: "done", hash: hash === "0x_already" ? undefined : hash, address: p.address });
       const key = k as keyof Deployments;
       return { ...acc, [key]: p.address };
@@ -122,14 +153,14 @@ export default function DeployPage() {
   }
 
   async function runAll() {
-    if (!isConnected || wrongChain || !address) return;
+    if (!isConnected || wrongChain || !address || !salt) return;
     setRunning(true);
-    const plans = computeAll(address);
+    const plans = computeAll(salt, address);
     let acc: Deployments = { ...addrs };
     try {
       for (const k of STEP_KEYS) {
         if (steps[k].status === "done") continue;
-        acc = await runStep(k, acc, plans);
+        acc = await runStep(k, acc, plans, salt);
         setAddrs(acc);
         saveDeployments(acc);
       }
@@ -138,6 +169,14 @@ export default function DeployPage() {
     } finally {
       setRunning(false);
     }
+  }
+
+  /** Start a brand-new deployment (fresh salt → fresh addresses). */
+  function startFresh() {
+    if (!confirm("Start a fresh deployment? This generates new contract addresses.")) return;
+    window.localStorage.removeItem(SALT_KEY);
+    window.localStorage.removeItem("asn.deployments.baseSepolia");
+    window.location.reload();
   }
 
   const envBlock = useMemo(() => {
@@ -208,12 +247,17 @@ export default function DeployPage() {
         })}
 
         <div className="row mt">
-          <button onClick={runAll} disabled={!isConnected || wrongChain || running || allDone}>
+          <button onClick={runAll} disabled={!isConnected || wrongChain || !salt || running || allDone}>
             {running ? "Deploying…" : allDone ? "All deployed ✓" : firstPending && steps[firstPending].status === "error" ? "Resume deploy" : "Deploy all"}
           </button>
           {allDone && (
             <button className="ghost" onClick={downloadJson}>Download deployments.json</button>
           )}
+          <button className="ghost" onClick={startFresh} disabled={running}>Start fresh</button>
+        </div>
+        <div className="small muted mt">
+          Deploys are deterministic (CREATE2) and resumable — if a step looks stuck, click <b>Resume deploy</b>;
+          already-deployed steps are detected and skipped.
         </div>
       </div>
 
