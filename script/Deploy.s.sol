@@ -22,6 +22,8 @@ import {IEntryPoint} from "account-abstraction/interfaces/IEntryPoint.sol";
 contract Deploy is Script {
     address internal constant ENTRYPOINT_V06 = 0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789;
     address internal constant COINBASE_FACTORY = 0x0BA5ED0c6AA8c49038F819E587E2633c4A9F428a;
+    /// @dev Canonical ERC-6551 registry (same address on every chain, incl. Base Sepolia).
+    address internal constant CANONICAL_ERC6551_REGISTRY = 0x000000006551c19487814612e58FE06813775758;
 
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");
@@ -33,10 +35,11 @@ contract Deploy is Script {
         Publications pubs = new Publications(agentID, cap);
         cap.setPublications(address(pubs));
 
-        // ERC-6551 encryption-identity layer: TBA implementation + key registry. The canonical
-        // ERC-6551 registry (0x000000006551c19487814612e58FE06813775758) is used on Base Sepolia;
-        // a local instance is deployed here for completeness/testing.
-        ERC6551Registry erc6551 = new ERC6551Registry();
+        // ERC-6551 encryption-identity layer: use the CANONICAL registry if present (Base Sepolia has
+        // it), else deploy a local one (e.g. anvil). Deploy our TBA implementation + key registry.
+        address erc6551 = CANONICAL_ERC6551_REGISTRY.code.length > 0
+            ? CANONICAL_ERC6551_REGISTRY
+            : address(new ERC6551Registry());
         ASNTokenBoundAccount tbaImpl = new ASNTokenBoundAccount();
         TBAKeyRegistry tbaKeys = new TBAKeyRegistry();
 
@@ -60,7 +63,7 @@ contract Deploy is Script {
         console2.log("CapabilityToken   ", address(cap));
         console2.log("Publications      ", address(pubs));
         console2.log("ASNPaymaster      ", address(paymaster));
-        console2.log("ERC6551Registry   ", address(erc6551));
+        console2.log("ERC6551Registry   ", erc6551);
         console2.log("ASN TBA impl      ", address(tbaImpl));
         console2.log("TBAKeyRegistry    ", address(tbaKeys));
         console2.log("EntryPoint v0.6   ", ENTRYPOINT_V06);

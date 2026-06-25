@@ -1,0 +1,85 @@
+:root {
+  --bg: #0b0d12;
+  --panel: #141823;
+  --panel-2: #1b2030;
+  --border: #262c3d;
+  --text: #e7ebf3;
+  --muted: #8b93a7;
+  --accent: #5b8cff;
+  --accent-2: #7c5cff;
+  --ok: #36d399;
+  --warn: #fbbd23;
+  --err: #f87272;
+}
+
+* { box-sizing: border-box; }
+html, body { padding: 0; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; }
+
+.nav {
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 22px; border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #0e1118, #0b0d12);
+  position: sticky; top: 0; z-index: 10;
+}
+.nav .brand { font-weight: 700; letter-spacing: .5px; }
+.nav .brand span { color: var(--accent); }
+.nav a.link { color: var(--muted); font-weight: 500; }
+.nav a.link.active, .nav a.link:hover { color: var(--text); text-decoration: none; }
+.nav .spacer { flex: 1; }
+
+.container { max-width: 880px; margin: 0 auto; padding: 28px 22px 60px; }
+.footer { max-width: 880px; margin: 0 auto; padding: 24px 22px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--border); }
+
+h1 { font-size: 24px; margin: 0 0 6px; }
+h2 { font-size: 17px; margin: 26px 0 10px; }
+p.sub { color: var(--muted); margin: 0 0 22px; }
+
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin: 14px 0; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spread { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+button, .btn {
+  background: var(--accent); color: #06122e; border: 0; border-radius: 9px;
+  padding: 9px 16px; font-weight: 650; font-size: 14px; cursor: pointer;
+}
+button:hover { filter: brightness(1.07); }
+button:disabled { opacity: .5; cursor: not-allowed; filter: none; }
+button.ghost { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+button.ghost:hover { background: #232a3d; }
+
+input, textarea, select {
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 9px; padding: 10px 12px; font-size: 14px; width: 100%;
+}
+textarea { min-height: 110px; resize: vertical; }
+label { display: block; color: var(--muted); font-size: 13px; margin: 12px 0 6px; }
+
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); background: var(--panel-2); color: var(--muted); }
+.pill.ok { color: var(--ok); border-color: #1c4a3a; }
+.pill.warn { color: var(--warn); border-color: #4a3f1c; }
+.pill.err { color: var(--err); border-color: #4a1c1c; }
+
+.step { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--border); }
+.step:first-child { border-top: 0; }
+.step .idx { width: 26px; height: 26px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--border); display: grid; place-items: center; font-size: 12px; color: var(--muted); flex: 0 0 auto; }
+.step.done .idx { background: #11331f; border-color: #1c4a3a; color: var(--ok); }
+.step.active .idx { border-color: var(--accent); color: var(--accent); }
+.step .body { flex: 1; }
+.step .name { font-weight: 600; }
+.muted { color: var(--muted); }
+.small { font-size: 12.5px; }
+.mt { margin-top: 14px; }
+.kv { display: grid; grid-template-columns: 160px 1fr; gap: 6px 12px; font-size: 13px; }
+.kv div:nth-child(odd) { color: var(--muted); }
+.feed-item { padding: 14px 0; border-top: 1px solid var(--border); }
+.feed-item:first-child { border-top: 0; }
+.banner { background: #1a1408; border: 1px solid #4a3f1c; color: #f0d28a; border-radius: 10px; padding: 12px 14px; font-size: 13.5px; }
+.code-block { background: #0a0c11; border: 1px solid var(--border); border-radius: 9px; padding: 12px; overflow-x: auto; white-space: pre; font-size: 12px; color: #cdd6e8; }

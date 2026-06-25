@@ -1,0 +1,27 @@
+{
+  "name": "asn-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "15.1.6",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "viem": "^2.21.0",
+    "wagmi": "^2.14.0",
+    "@tanstack/react-query": "^5.62.0",
+    "@noble/hashes": "^1.5.0",
+    "multiformats": "^13.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.5.4"
+  }
+}
