@@ -17,6 +17,10 @@ gas_reports = ["AgentID", "CapabilityToken", "Publications", "ASNPaymaster"]
 [profile.ci]
 verbosity = 3
 
+# Etherscan V2 (single unified API across chains; Basescan V1 is deprecated). Key comes from env.
+[etherscan]
+base-sepolia = { key = "${ETHERSCAN_API_KEY}", chain = 84532, url = "https://api.etherscan.io/v2/api" }
+
 [fmt]
 line_length = 120
 tab_width = 4
