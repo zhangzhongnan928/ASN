@@ -1,0 +1,39 @@
+[profile.default]
+src = "contracts"
+out = "out"
+libs = ["lib"]
+test = "test"
+script = "script"
+solc_version = "0.8.23"
+optimizer = true
+optimizer_runs = 200
+evm_version = "paris"
+auto_detect_remappings = false
+ffi = false
+fs_permissions = [{ access = "read", path = "./test/fixtures" }, { access = "read", path = "./out" }]
+# Adversarial + functional suites are split by path; see scripts/test split.
+gas_reports = ["AgentID", "CapabilityToken", "Publications", "ASNPaymaster"]
+
+[profile.ci]
+verbosity = 3
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+
+# Remappings: standardize on the versions bundled with coinbase/smart-wallet
+# (OZ 5.0.2, solady 0.0.175, account-abstraction v0.6 interfaces, webauthn-sol)
+# so the CBSW + EntryPoint-v0.6 stack stays internally consistent.
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "smart-wallet/=lib/smart-wallet/src/",
+    "@openzeppelin/contracts/=lib/smart-wallet/lib/openzeppelin-contracts/contracts/",
+    "openzeppelin-contracts/=lib/smart-wallet/lib/openzeppelin-contracts/",
+    "account-abstraction/=lib/smart-wallet/lib/account-abstraction/contracts/",
+    "solady/=lib/smart-wallet/lib/solady/src/",
+    "webauthn-sol/=lib/smart-wallet/lib/webauthn-sol/src/",
+    "FreshCryptoLib/=lib/smart-wallet/lib/webauthn-sol/lib/FreshCryptoLib/solidity/src/",
+    "erc6551/=lib/erc6551/src/",
+]

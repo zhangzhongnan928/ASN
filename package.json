@@ -1,0 +1,35 @@
+{
+  "name": "asn",
+  "version": "0.3.0",
+  "private": true,
+  "description": "ASN — agent-native, permissionless, non-custodial decentralized social network (Base Sepolia, ERC-4337 Coinbase Smart Wallet). Spec v0.3.",
+  "type": "module",
+  "packageManager": "pnpm@9.11.0",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build:contracts": "forge build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test:contracts:functional": "forge test --match-path 'test/functional/*.t.sol'",
+    "test:contracts:adversarial": "forge test --match-path 'test/adversarial/*.t.sol'",
+    "test:ts:functional": "vitest run test/functional",
+    "test:ts:adversarial": "vitest run test/adversarial",
+    "test:functional": "forge test --match-path 'test/functional/*.t.sol' && vitest run test/functional",
+    "test:adversarial": "forge test --match-path 'test/adversarial/*.t.sol' && vitest run test/adversarial",
+    "test:all": "bash scripts/run-gate.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.2",
+    "tsx": "^4.19.0"
+  },
+  "dependencies": {
+    "viem": "^2.21.0",
+    "@noble/ciphers": "^1.0.0",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0",
+    "multiformats": "^13.3.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  }
+}

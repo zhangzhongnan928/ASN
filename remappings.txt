@@ -1,0 +1,9 @@
+forge-std/=lib/forge-std/src/
+smart-wallet/=lib/smart-wallet/src/
+@openzeppelin/contracts/=lib/smart-wallet/lib/openzeppelin-contracts/contracts/
+openzeppelin-contracts/=lib/smart-wallet/lib/openzeppelin-contracts/
+account-abstraction/=lib/smart-wallet/lib/account-abstraction/contracts/
+solady/=lib/smart-wallet/lib/solady/src/
+webauthn-sol/=lib/smart-wallet/lib/webauthn-sol/src/
+FreshCryptoLib/=lib/smart-wallet/lib/webauthn-sol/lib/FreshCryptoLib/solidity/src/
+erc6551/=lib/erc6551/src/
