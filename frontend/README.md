@@ -30,5 +30,14 @@ pnpm dev            # http://localhost:3000
 5. Optionally set `NEXT_PUBLIC_RPC_URL` to a dedicated Base Sepolia RPC (e.g. Alchemy) for reliable feed
    log queries.
 
+### IPFS pinning (so post bodies resolve for everyone)
+
+Set **`PINATA_JWT`** (a free key from [pinata.cloud]) as a Vercel env var (server-side only — no
+`NEXT_PUBLIC_` prefix, so it's never exposed to the browser). When set, `/publish` pins each post body to
+IPFS via the `/api/pin` route and anchors the resolvable CID on-chain; the feed fetches + integrity-checks
+(keccak == on-chain bodyHash) and renders the content. Without it, posts are anchored on-chain and kept in
+your browser only. Optionally set `NEXT_PUBLIC_IPFS_GATEWAY` (default `https://ipfs.io/ipfs/`; a Pinata
+dedicated gateway is most reliable).
+
 The contract ABIs + creation bytecode in `lib/artifacts.ts` are generated from the Foundry build:
 `node ../scripts/gen-frontend-artifacts.js` (run after `forge build` at the repo root).

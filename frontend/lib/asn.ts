@@ -31,9 +31,50 @@ export function textToBytes(s: string): Uint8Array {
   return stringToBytes(s);
 }
 
-/** Public IPFS gateway URL for a CID (content must be pinned elsewhere to resolve). */
+const GATEWAY = (process.env.NEXT_PUBLIC_IPFS_GATEWAY || "https://ipfs.io/ipfs/").replace(/\/?$/, "/");
+
+/** Public IPFS gateway URL for a CID. */
 export function ipfsGateway(cid: string): string {
-  return `https://ipfs.io/ipfs/${cid}`;
+  return `${GATEWAY}${cid}`;
+}
+
+/**
+ * Pin `text` via the server route (Pinata, key stays server-side). Returns the resolvable CID. If
+ * pinning isn't configured (501), falls back to the locally-computed CID (anchor-only; not resolvable
+ * for others). Either way the bytes hashed for bodyHash are the UTF-8 of `text`.
+ */
+export async function pinText(text: string): Promise<{ cid: string; pinned: boolean }> {
+  try {
+    const res = await fetch("/api/pin", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const { cid } = (await res.json()) as { cid: string };
+      return { cid, pinned: true };
+    }
+  } catch {
+    /* fall through to local CID */
+  }
+  return { cid: await computeCID(textToBytes(text)), pinned: false };
+}
+
+/** Resolve a post's content: local cache first, then the IPFS gateway; verify keccak == bodyHash. */
+export async function fetchContent(cid: string, expectedBodyHash: Hex): Promise<string | null> {
+  let text: string | null = null;
+  if (typeof window !== "undefined") text = window.localStorage.getItem(`asn.content.${cid}`);
+  if (text == null) {
+    try {
+      const res = await fetch(ipfsGateway(cid), { signal: AbortSignal.timeout(6000) });
+      if (res.ok) text = await res.text();
+    } catch {
+      return null;
+    }
+  }
+  if (text == null) return null;
+  if (bodyHash(textToBytes(text)).toLowerCase() !== expectedBodyHash.toLowerCase()) return null; // integrity
+  return text;
 }
 
 export function short(addr?: string): string {

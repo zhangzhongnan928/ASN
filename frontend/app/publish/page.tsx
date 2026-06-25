@@ -8,7 +8,7 @@ import Link from "next/link";
 import { ConnectButton } from "@/components/ConnectButton";
 import { AgentIDAbi, PublicationsAbi } from "@/lib/artifacts";
 import { loadDeployments, txUrl, type Deployments } from "@/lib/contracts";
-import { computeCID, bodyHash, textToBytes } from "@/lib/asn";
+import { bodyHash, textToBytes, pinText } from "@/lib/asn";
 
 export default function PublishPage() {
   const { address, isConnected } = useAccount();
@@ -21,6 +21,7 @@ export default function PublishPage() {
   const [busy, setBusy] = useState(false);
   const [hash, setHash] = useState<string>();
   const [cid, setCid] = useState<string>();
+  const [pinned, setPinned] = useState(false);
   const [err, setErr] = useState<string>();
 
   useEffect(() => setD(loadDeployments()), []);
@@ -38,11 +39,12 @@ export default function PublishPage() {
       if (owner.toLowerCase() !== address?.toLowerCase()) {
         throw new Error(`You don't own AgentID #${agentId} (owner is ${owner})`);
       }
-      const bytes = textToBytes(text);
-      const c = await computeCID(bytes);
-      const bh = bodyHash(bytes);
+      const bh = bodyHash(textToBytes(text));
+      // pin to IPFS (server-side, if configured); fall back to a local CID otherwise.
+      const { cid: c, pinned: didPin } = await pinText(text);
       setCid(c);
-      // store content locally so it can be shown without an external pin (MVP).
+      setPinned(didPin);
+      // cache locally too (instant display + offline fallback).
       try {
         window.localStorage.setItem(`asn.content.${c}`, text);
       } catch {
@@ -89,7 +91,11 @@ export default function PublishPage() {
             {busy ? "Publishing…" : "Publish (public)"}
           </button>
         </div>
-        {cid && <div className="small mono mt">cid: {cid}</div>}
+        {cid && (
+          <div className="small mono mt">
+            cid: {cid} {pinned ? <span className="pill ok">pinned to IPFS</span> : <span className="pill warn">local only (set PINATA_JWT)</span>}
+          </div>
+        )}
         {hash && (
           <div className="small mt">
             <a href={txUrl(hash)} target="_blank" rel="noreferrer">tx ↗</a> — your post is on the <Link href="/">feed</Link>.
@@ -99,9 +105,9 @@ export default function PublishPage() {
       </div>
 
       <div className="panel small muted">
-        Note (MVP): this anchors the commitment on-chain and keeps the body in your browser. For the body to
-        resolve via IPFS for everyone, pin it to an IPFS service (the CID already matches). Gated/encrypted
-        posts require the off-chain TBA key service and are not exposed in this demo UI.
+        When <code>PINATA_JWT</code> is set (server-side env var), post bodies are pinned to IPFS and resolve
+        for everyone. Otherwise the commitment is anchored on-chain and the body is kept in your browser.
+        Gated/encrypted posts require the off-chain TBA key service and are not exposed in this demo UI.
       </div>
     </div>
   );

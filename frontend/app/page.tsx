@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { usePublicClient } from "wagmi";
 import { parseAbiItem, type Address } from "viem";
 import Link from "next/link";
+import type { Hex } from "viem";
 import { loadDeployments } from "@/lib/contracts";
 import { addrUrl } from "@/lib/contracts";
-import { ipfsGateway, short } from "@/lib/asn";
+import { ipfsGateway, short, fetchContent } from "@/lib/asn";
 
 const PUBLISHED = parseAbiItem(
   "event Published(uint256 indexed agentId, uint256 indexed pubId, string cid, bytes32 cidDigest, bytes32 bodyHash, uint8 visibility, uint32 revision, uint32 keyEpoch, address owner)",
@@ -16,6 +17,7 @@ interface FeedItem {
   agentId: bigint;
   pubId: bigint;
   cid: string;
+  bodyHash: Hex;
   visibility: number;
   revision: number;
   owner: Address;
@@ -26,6 +28,7 @@ export default function FeedPage() {
   const publicClient = usePublicClient();
   const [pubs, setPubs] = useState<Address | undefined>();
   const [items, setItems] = useState<FeedItem[]>([]);
+  const [content, setContent] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>();
 
@@ -51,6 +54,7 @@ export default function FeedPage() {
             agentId: a.agentId as bigint,
             pubId: a.pubId as bigint,
             cid: a.cid as string,
+            bodyHash: a.bodyHash as Hex,
             visibility: Number(a.visibility),
             revision: Number(a.revision),
             owner: a.owner as Address,
@@ -59,6 +63,13 @@ export default function FeedPage() {
         });
         mapped.sort((x, y) => (x.block < y.block ? 1 : -1));
         setItems(mapped);
+        // resolve public post bodies (best-effort: local cache or IPFS gateway, integrity-checked).
+        for (const it of mapped) {
+          if (it.visibility !== 0) continue;
+          fetchContent(it.cid, it.bodyHash).then((txt) => {
+            if (!cancelled && txt != null) setContent((c) => ({ ...c, [it.cid]: txt }));
+          });
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message?.slice(0, 160) ?? "failed to load");
       } finally {
@@ -111,11 +122,17 @@ export default function FeedPage() {
                   {short(it.owner)}
                 </a>
               </div>
+              {content[it.cid] != null && (
+                <div className="mt" style={{ whiteSpace: "pre-wrap" }}>
+                  {content[it.cid]}
+                </div>
+              )}
               <div className="small mono mt">
                 cid:{" "}
                 <a href={ipfsGateway(it.cid)} target="_blank" rel="noreferrer">
                   {it.cid}
                 </a>
+                {it.visibility === 0 && content[it.cid] == null && <span className="muted"> · body not pinned/resolvable</span>}
               </div>
             </div>
           ))}
