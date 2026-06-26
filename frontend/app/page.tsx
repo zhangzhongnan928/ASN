@@ -5,7 +5,7 @@ import { usePublicClient } from "wagmi";
 import { parseAbiItem, type Address } from "viem";
 import Link from "next/link";
 import type { Hex } from "viem";
-import { loadDeployments } from "@/lib/contracts";
+import { loadDeployments, DEPLOY_BLOCK } from "@/lib/contracts";
 import { addrUrl } from "@/lib/contracts";
 import { ipfsGateway, short, fetchContent } from "@/lib/asn";
 
@@ -46,8 +46,18 @@ export default function FeedPage() {
       setLoading(true);
       setError(undefined);
       try {
-        const logs = await publicClient.getLogs({ address: pubs, event: PUBLISHED, fromBlock: 0n, toBlock: "latest" });
-        if (cancelled) return;
+        // Public RPCs reject a single getLogs over the whole chain, so query in bounded chunks,
+        // starting from the deploy block (or a recent window if unknown).
+        const latest = await publicClient.getBlockNumber();
+        const CHUNK = 9_000n;
+        const start = DEPLOY_BLOCK ?? (latest > 500_000n ? latest - 500_000n : 0n);
+        const logs: { args: Record<string, unknown>; blockNumber: bigint | null }[] = [];
+        for (let from = start; from <= latest; from += CHUNK) {
+          const to = from + CHUNK - 1n > latest ? latest : from + CHUNK - 1n;
+          const chunk = await publicClient.getLogs({ address: pubs, event: PUBLISHED, fromBlock: from, toBlock: to });
+          if (cancelled) return;
+          logs.push(...chunk);
+        }
         const mapped: FeedItem[] = logs.map((l) => {
           const a = l.args as Record<string, unknown>;
           return {
@@ -96,8 +106,9 @@ export default function FeedPage() {
       {pubs && loading && <div className="panel muted">Loading feed…</div>}
       {pubs && error && (
         <div className="banner">
-          Couldn&apos;t load logs from the public RPC ({error}). Set <code>NEXT_PUBLIC_RPC_URL</code> to a dedicated
-          Base Sepolia RPC (e.g. Alchemy) for reliable log queries.
+          Couldn&apos;t load logs from the public RPC ({error}). Set <code>NEXT_PUBLIC_DEPLOY_BLOCK</code> (the
+          Publications deploy block) so the feed scans a small range, and/or <code>NEXT_PUBLIC_RPC_URL</code> to a
+          dedicated Base Sepolia RPC (e.g. Alchemy) for reliable log queries.
         </div>
       )}
 

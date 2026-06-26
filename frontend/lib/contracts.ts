@@ -17,6 +17,11 @@ export const TBA_SALT = ("0x" + "00".repeat(32)) as `0x${string}`;
 /** Canonical deterministic CREATE2 deployer (Arachnid), present on Base Sepolia. Used so the deploy
  *  works from any account type (EOA, EIP-7702 EOA, or smart wallet) via a normal CALL. */
 export const CREATE2_DEPLOYER: Address = "0x4e59b44847b379578588920cA78FbF26c0B4956C";
+/** Block the Publications contract was deployed at — the feed scans from here (chunked) so it doesn't
+ *  ask a public RPC for the whole chain from block 0 (which they reject). Set NEXT_PUBLIC_DEPLOY_BLOCK. */
+export const DEPLOY_BLOCK: bigint | undefined = process.env.NEXT_PUBLIC_DEPLOY_BLOCK
+  ? BigInt(process.env.NEXT_PUBLIC_DEPLOY_BLOCK)
+  : undefined;
 
 export const abis = {
   AgentID: AgentIDAbi,
