@@ -31,11 +31,24 @@ export function textToBytes(s: string): Uint8Array {
   return stringToBytes(s);
 }
 
-const GATEWAY = (process.env.NEXT_PUBLIC_IPFS_GATEWAY || "https://ipfs.io/ipfs/").replace(/\/?$/, "/");
+// Gateways tried in order. Pinata first (the app pins there, so it serves instantly with CORS);
+// then public fallbacks. Override/prepend with NEXT_PUBLIC_IPFS_GATEWAY.
+const GATEWAYS = Array.from(
+  new Set(
+    [
+      process.env.NEXT_PUBLIC_IPFS_GATEWAY,
+      "https://gateway.pinata.cloud/ipfs/",
+      "https://dweb.link/ipfs/",
+      "https://ipfs.io/ipfs/",
+    ]
+      .filter(Boolean)
+      .map((g) => (g as string).replace(/\/?$/, "/")),
+  ),
+);
 
-/** Public IPFS gateway URL for a CID. */
+/** Primary public IPFS gateway URL for a CID (for the clickable link). */
 export function ipfsGateway(cid: string): string {
-  return `${GATEWAY}${cid}`;
+  return `${GATEWAYS[0]}${cid}`;
 }
 
 /**
@@ -60,21 +73,25 @@ export async function pinText(text: string): Promise<{ cid: string; pinned: bool
   return { cid: await computeCID(textToBytes(text)), pinned: false };
 }
 
-/** Resolve a post's content: local cache first, then the IPFS gateway; verify keccak == bodyHash. */
+/** Resolve a post's content: local cache first, then each IPFS gateway in turn; the first response
+ *  whose keccak256 matches bodyHash wins (untrusted gateways are integrity-checked, not trusted). */
 export async function fetchContent(cid: string, expectedBodyHash: Hex): Promise<string | null> {
-  let text: string | null = null;
-  if (typeof window !== "undefined") text = window.localStorage.getItem(`asn.content.${cid}`);
-  if (text == null) {
+  const ok = (t: string) => bodyHash(textToBytes(t)).toLowerCase() === expectedBodyHash.toLowerCase();
+  if (typeof window !== "undefined") {
+    const cached = window.localStorage.getItem(`asn.content.${cid}`);
+    if (cached != null && ok(cached)) return cached;
+  }
+  for (const gw of GATEWAYS) {
     try {
-      const res = await fetch(ipfsGateway(cid), { signal: AbortSignal.timeout(6000) });
-      if (res.ok) text = await res.text();
+      const res = await fetch(`${gw}${cid}`, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const text = await res.text();
+      if (ok(text)) return text; // integrity-verified
     } catch {
-      return null;
+      /* try the next gateway */
     }
   }
-  if (text == null) return null;
-  if (bodyHash(textToBytes(text)).toLowerCase() !== expectedBodyHash.toLowerCase()) return null; // integrity
-  return text;
+  return null;
 }
 
 export function short(addr?: string): string {
