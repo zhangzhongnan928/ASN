@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePublicClient } from "wagmi";
-import { parseAbiItem, type Address } from "viem";
+import { useEffect, useMemo, useState } from "react";
+import { createPublicClient, http, parseAbiItem, type Address } from "viem";
+import { baseSepolia } from "viem/chains";
 import Link from "next/link";
 import type { Hex } from "viem";
 import { loadDeployments, DEPLOY_BLOCK } from "@/lib/contracts";
@@ -25,7 +25,12 @@ interface FeedItem {
 }
 
 export default function FeedPage() {
-  const publicClient = usePublicClient();
+  // Dedicated read client — NOT usePublicClient(), which routes through the connected wallet's RPC
+  // (Coinbase's shared endpoint caps eth_getLogs at <1000 blocks). Use a plain Base Sepolia RPC.
+  const publicClient = useMemo(
+    () => createPublicClient({ chain: baseSepolia, transport: http(process.env.NEXT_PUBLIC_RPC_URL || "https://sepolia.base.org") }),
+    [],
+  );
   const [pubs, setPubs] = useState<Address | undefined>();
   const [items, setItems] = useState<FeedItem[]>([]);
   const [content, setContent] = useState<Record<string, string>>({});
@@ -49,8 +54,8 @@ export default function FeedPage() {
         // Public RPCs reject a single getLogs over the whole chain, so query in bounded chunks,
         // starting from the deploy block (or a recent window if unknown).
         const latest = await publicClient.getBlockNumber();
-        const CHUNK = 9_000n;
-        const start = DEPLOY_BLOCK ?? (latest > 500_000n ? latest - 500_000n : 0n);
+        const CHUNK = 900n; // safe for the strictest public RPCs (Coinbase caps eth_getLogs near 1000)
+        const start = DEPLOY_BLOCK ?? (latest > 50_000n ? latest - 50_000n : 0n);
         const logs: { args: Record<string, unknown>; blockNumber: bigint | null }[] = [];
         for (let from = start; from <= latest; from += CHUNK) {
           const to = from + CHUNK - 1n > latest ? latest : from + CHUNK - 1n;
